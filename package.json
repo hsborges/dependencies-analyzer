@@ -1,13 +1,21 @@
 {
   "name": "@hsborges/dependencies-analyzer",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "author": "Hudson Silva Borges <hudsonsilbor@gmail.com>",
+  "description": "Dependencies analyzer is a tool for extracting the history evolution of the dependencies described in the package.json and bower.json.",
+  "homepage": "https://github.com/hsborges/dependencies-analyzer#readme",
   "main": "index.js",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/hsborges/dependencies-analyzer.git"
   },
-  "author": "Hudson Silva Borges <hudsonsilbor@gmail.com>",
-  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/hsborges/dependencies-analyzer/issues"
+  },
   "directories": {
     "bin": "./bin"
   },
@@ -17,8 +25,11 @@
   "dependencies": {
     "bluebird": "^3.7.2",
     "commander": "^5.0.0",
+    "debug": "^4.1.1",
     "glob": "^7.1.6",
-    "json2csv": "^5.0.0"
+    "json2csv": "^5.0.0",
+    "lodash": "^4.17.15",
+    "read-package-json": "^2.1.1"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
@@ -27,13 +38,5 @@
     "eslint-plugin-import": "^2.20.2",
     "eslint-plugin-prettier": "^3.1.2",
     "prettier": "^2.0.2"
-  },
-  "description": "Dependencies analyzer is a tool for extracting the history evolution of the dependencies described in the package.json and bower.json.",
-  "bugs": {
-    "url": "https://github.com/hsborges/dependencies-analyzer/issues"
-  },
-  "homepage": "https://github.com/hsborges/dependencies-analyzer#readme",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }

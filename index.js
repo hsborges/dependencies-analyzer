@@ -1,119 +1,108 @@
-global.Promise = require('bluebird');
-
+/*
+ *  Author: Hudson Silva Borges (hudsonsilbor[at]gmail.com)
+ */
+const Promise = require('bluebird');
 const path = require('path');
-const util = require('util');
+const glob = require('glob');
+const readJson = Promise.promisify(require('read-package-json'));
+const debug = require('debug')('analyzer');
 
-const glob = util.promisify(require('glob'));
-const exec = util.promisify(require('child_process').exec);
-const readFile = util.promisify(require('fs').readFile);
+const { execSync } = require('child_process');
+const { pick, sortBy } = require('lodash');
+const { uniqWith, isEqual } = require('lodash');
 
-const { parse } = require('json2csv');
-const { program } = require('commander');
-const { createWriteStream } = require('fs');
+const FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'bundledDependencies'
+];
 
-program
-  .version('0.0.1')
-  .arguments('<repository>')
-  .option(
-    '-t, --tmp-dir <dir>',
-    'Temporary directory to clone the project',
-    '/tmp'
+module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
+  const [owner, name] = repository.split('/');
+
+  if (!(owner && name)) {
+    throw new Error(
+      'Invalid repository name! Acceptable format: "owner/name" (e.g., twbs/bootstrap)'
+    );
+  }
+
+  const repositoryPath = path.join(tmpDir, repository);
+  const cloneCommand = `git clone https://github.com/${repository} ${repositoryPath}`;
+
+  // faz o clone do projeto
+  debug(`Clonig ${repository} into ${repositoryPath}`);
+  execSync(cloneCommand, { stdio: 'ignore' });
+
+  // deleta arquivos se ctrl+c for pressionado
+  debug('Register handling to delete files before exit');
+  process.on('SIGINT', () =>
+    execSync(`rm -rf ${repositoryPath}`, { stdio: 'ignore' })
+  );
+
+  // busca por arquivos package.json e bower.json
+  debug('Searching for package.json and bower.json files');
+  const files = glob.sync('**/@(package|bower).json', { cwd: repositoryPath });
+
+  if (!files || !files.length)
+    throw new Error('No package.json or bower.json found!');
+
+  return Promise.reduce(
+    files,
+    async (filesAcc, file) => {
+      // volta para o HEAD
+      execSync('git checkout origin/HEAD', {
+        cwd: repositoryPath,
+        stdio: 'ignore'
+      });
+      // busca todos os commits que alteraram tais arquivos
+      debug(`Getting change history of ${file}`);
+      const command = `git log --pretty=format:%H,%an,%ae,%at -- ${file}`;
+      const stdout = execSync(command, {
+        cwd: repositoryPath,
+        encoding: 'utf8',
+        maxBuffer: Infinity
+      });
+
+      const commits = stdout.split(/[\r\n]/gi).map((row) => {
+        const [sha, author, email, date] = row.split(',');
+        return { file, sha, author, email, date: new Date(date * 1000) };
+      });
+
+      // itera sobre os commits
+      debug(`Iterating over ${commits.length} commits for ${file}`);
+      return Promise.mapSeries(commits, async (commit) => {
+        // faz o checkout de cada commit e analisa as dependencias
+        debug(`Checking out commit ${commit.sha}`);
+        execSync(`git checkout ${commit.sha}`, {
+          cwd: repositoryPath,
+          stdio: 'ignore'
+        });
+        debug(`Parsing ${file} on ${commit.sha}`);
+        const fileP = path.join(repositoryPath, file);
+        return readJson(fileP)
+          .then((json) =>
+            FIELDS.reduce(
+              (_, type) => (json[type] ? { ..._, [type]: json[type] } : _),
+              commit
+            )
+          )
+          .catch((err) => {
+            debug(`ERROR: Parsing failed for ${file} on commit ${commit.sha}`);
+            if (ignoreParsingErrors) return Promise.resolve([]);
+            throw err;
+          });
+      }).then((data) => filesAcc.concat(data));
+    },
+    []
   )
-  .option('-f, --format <format>', 'Output format (csv or json)', 'csv')
-  .option('-o, --output <file_path>', 'Output file path')
-  .action((repository) => {
-    const [owner, name] = repository.split('/');
-
-    if (!(owner && name)) {
-      process.stderr.write(
-        'Invalid repository name! Acceptable format: "owner/name" (e.g., twbs/bootstrap)\n'
+    .then((result) => {
+      // remove commits que não modificaram as dependencias
+      debug(`Removing commits that did not modify dependencies`);
+      return uniqWith(sortBy(result, 'date'), (a, b) =>
+        isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
       );
-      process.exit(1);
-    }
-
-    const repositoryPath = path.join(program.tmpDir, repository);
-
-    // faz o clone do projeto
-    exec(`git clone https://github.com/${repository} ${repositoryPath}`)
-      .catch(({ stderr, code }) => {
-        process.stderr.write(stderr);
-        process.exit(code);
-      })
-      // busca por arquivos package.json e bower.json e itera sobre eles
-      .then(() => glob('**/@(package|bower).json', { cwd: repositoryPath }))
-      .then((files) => {
-        if (!files || !files.length) {
-          process.stderr.write('No package.json or bower.json found!');
-          process.exit(1);
-        }
-
-        return Promise.reduce(
-          files,
-          async (filesAcc, file) => {
-            // busca todos os commits que alteraram tais arquivos
-            const command = `git log --follow --pretty=format:%H,%an,%ae,%at -- ${file}`;
-            const { stdout, stderr } = await exec(command, {
-              cwd: repositoryPath
-            });
-
-            if (stderr) throw stderr;
-
-            const commits = stdout.split(/[\r\n]/gi).map((row) => {
-              const [sha, author, email, date] = row.split(',');
-              return { sha, author, email, date };
-            });
-
-            return Promise.reduce(
-              commits,
-              async (acc, commit) => {
-                // faz o checkout de cada commit e analisa as dependencias
-                await exec(`git checkout ${commit.sha}`, {
-                  cwd: repositoryPath
-                });
-                const json = JSON.parse(
-                  await readFile(`${path.join(repositoryPath, file)}`)
-                );
-
-                const types = [
-                  'dependencies',
-                  'devDependencies',
-                  'optionalDependencies',
-                  'peerDependencies',
-                  'bundledDependencies'
-                ];
-
-                return Promise.reduce(
-                  types,
-                  (_acc, type) =>
-                    _acc.concat(
-                      Object.keys(json[type] || {}).map((_name) => ({
-                        file,
-                        ...commit,
-                        name: _name,
-                        version: json[type][name],
-                        type
-                      }))
-                    ),
-                  acc
-                );
-              },
-              []
-            ).then((data) => filesAcc.concat(data));
-          },
-          []
-        );
-      })
-      .then((result) => {
-        if (program.output) {
-          const outputFile = path.resolve(__dirname, program.output);
-          const stream = createWriteStream(outputFile);
-          process.stdout.write = stream.write.bind(stream);
-        }
-        if (program.format === 'csv') process.stdout.write(parse(result));
-        else process.stdout.write(JSON.stringify(result, null, 2));
-      })
-      .catch((err) => process.stderr.write(err))
-      .finally(() => exec(`rm -rf ${repositoryPath}`));
-  });
-
-program.parse(process.argv);
+    })
+    .finally(() => execSync(`rm -rf ${repositoryPath}`));
+};
