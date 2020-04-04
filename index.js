@@ -5,11 +5,14 @@ const Promise = require('bluebird');
 const path = require('path');
 const glob = require('glob');
 const readJson = Promise.promisify(require('read-package-json'));
-const debug = require('debug')('analyzer');
+const debug = require('debug');
 
 const { execSync } = require('child_process');
 const { pick, sortBy } = require('lodash');
 const { uniqWith, isEqual } = require('lodash');
+
+const log = debug('analyzer:log');
+const error = debug('analyzer:error');
 
 const FIELDS = [
   'dependencies',
@@ -32,17 +35,17 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
   const cloneCommand = `git clone https://github.com/${repository} ${repositoryPath}`;
 
   // faz o clone do projeto
-  debug(`Clonig ${repository} into ${repositoryPath}`);
+  log(`Clonig ${repository} into ${repositoryPath}`);
   execSync(cloneCommand, { stdio: 'ignore' });
 
   // deleta arquivos se ctrl+c for pressionado
-  debug('Register handling to delete files before exit');
+  log('Register handling to delete files before exit');
   process.on('SIGINT', () =>
     execSync(`rm -rf ${repositoryPath}`, { stdio: 'ignore' })
   );
 
   // busca por arquivos package.json e bower.json
-  debug('Searching for package.json and bower.json files');
+  log('Searching for package.json and bower.json files');
   const files = glob.sync('**/@(package|bower).json', { cwd: repositoryPath });
 
   if (!files || !files.length)
@@ -57,7 +60,7 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
         stdio: 'ignore'
       });
       // busca todos os commits que alteraram tais arquivos
-      debug(`Getting change history of ${file}`);
+      log(`Getting change history of ${file}`);
       const command = `git log --pretty=format:%H,%an,%ae,%at -- ${file}`;
       const stdout = execSync(command, {
         cwd: repositoryPath,
@@ -71,15 +74,15 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
       });
 
       // itera sobre os commits
-      debug(`Iterating over ${commits.length} commits for ${file}`);
+      log(`Iterating over ${commits.length} commits for ${file}`);
       return Promise.mapSeries(commits, async (commit) => {
         // faz o checkout de cada commit e analisa as dependencias
-        debug(`Checking out commit ${commit.sha}`);
+        log(`Checking out commit ${commit.sha}`);
         execSync(`git checkout ${commit.sha}`, {
           cwd: repositoryPath,
           stdio: 'ignore'
         });
-        debug(`Parsing ${file} on ${commit.sha}`);
+        log(`Parsing ${file} on ${commit.sha}`);
         const fileP = path.join(repositoryPath, file);
         return readJson(fileP)
           .then((json) =>
@@ -89,7 +92,7 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
             )
           )
           .catch((err) => {
-            debug(`ERROR: Parsing failed for ${file} on commit ${commit.sha}`);
+            error(`Parsing failed for ${file} on commit ${commit.sha}`);
             if (ignoreParsingErrors) return Promise.resolve([]);
             throw err;
           });
@@ -99,7 +102,7 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
   )
     .then((result) => {
       // remove commits que não modificaram as dependencias
-      debug(`Removing commits that did not modify dependencies`);
+      log(`Removing commits that did not modify dependencies`);
       return uniqWith(sortBy(result, 'date'), (a, b) =>
         isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
       );
