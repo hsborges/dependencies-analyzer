@@ -10,9 +10,6 @@
     "type": "git",
     "url": "git+ssh://git@github.com/hsborges/dependencies-analyzer.git"
   },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "bugs": {
     "url": "https://github.com/hsborges/dependencies-analyzer/issues"
   },
