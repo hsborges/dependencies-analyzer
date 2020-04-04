@@ -7,7 +7,7 @@ Dependencies analyzer is a tool for extracting the history evolution of the depe
 Use the package manager [npm](https://www.npmjs.com/get-npm) to install foobar.
 
 ```bash
-npm install -g dependencies-analyzer
+npm install -g @hsborges/dependencies-analyzer
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ npm install -g dependencies-analyzer
 To use this tool you need to provide the repository name (e.g., twbs/bootstrap)
 
 ```bash
-dependencies-analyzer g., twbs/bootstrap
+dependencies-analyzer hsborges/dependencies-analyzer
 ```
 
 Use the help option to more information
