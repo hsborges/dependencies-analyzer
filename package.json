@@ -19,6 +19,9 @@
   "bin": {
     "dependencies-analyzer": "bin/analyzer"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "dependencies": {
     "bluebird": "^3.7.2",
     "commander": "^5.0.0",
