@@ -40,9 +40,10 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
 
   // deleta arquivos se ctrl+c for pressionado
   log('Register handling to delete files before exit');
-  process.on('SIGINT', () =>
-    execSync(`rm -rf ${repositoryPath}`, { stdio: 'ignore' })
-  );
+  process.on('SIGINT', (signal) => {
+    execSync(`rm -rf ${repositoryPath}`, { stdio: 'ignore' });
+    process.exit(signal);
+  });
 
   // busca por arquivos package.json e bower.json
   log('Searching for package.json and bower.json files');
