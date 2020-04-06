@@ -86,7 +86,7 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
           )
           .catch((err) => {
             error(`Parsing failed for ${file} on commit ${commit.sha}`);
-            if (ignoreParsingErrors) return Promise.resolve([]);
+            if (ignoreParsingErrors) return Promise.resolve(null);
             throw err;
           });
       }).then((data) => filesAcc.concat(data));
