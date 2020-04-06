@@ -23,14 +23,13 @@ const FIELDS = [
   'bundledDependencies'
 ];
 
-module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
+module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
   const [owner, name] = repository.split('/');
 
-  if (!(owner && name)) {
+  if (!(owner && name))
     throw new Error(
       'Invalid repository name! Acceptable format: "owner/name" (e.g., twbs/bootstrap)'
     );
-  }
 
   const hash = crypto.createHash('md5').update(repository).digest('hex');
   const repositoryPath = path.join(tmpDir, `repo_${hash}`);
@@ -45,7 +44,7 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
   const files = glob.sync('**/@(package|bower).json', { cwd: repositoryPath });
 
   if (!files || !files.length)
-    throw new Error('No package.json or bower.json found!');
+    throw new Error('No [package|bower].json files found!');
 
   return Promise.reduce(
     files,
