@@ -2,13 +2,14 @@
  *  Author: Hudson Silva Borges (hudsonsilbor[at]gmail.com)
  */
 const Promise = require('bluebird');
+const os = require('os');
 const path = require('path');
 const glob = require('glob');
 const util = require('util');
-const crypto = require('crypto');
 const debug = require('debug');
-const os = require('os');
+const crypto = require('crypto');
 
+const rimraf = util.promisify(require('rimraf'));
 const exec = util.promisify(require('child_process').exec);
 const readJson = util.promisify(require('read-package-json'));
 
@@ -115,5 +116,5 @@ module.exports = async (
         isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
       );
     })
-    .finally(() => exec(`rm -rf ${repositoryPath}`, { stdio: 'ignore' }));
+    .finally(() => rimraf(repositoryPath, { glob: false }));
 };
