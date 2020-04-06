@@ -4,11 +4,13 @@
 const Promise = require('bluebird');
 const path = require('path');
 const glob = require('glob');
+const util = require('util');
 const crypto = require('crypto');
-const readJson = Promise.promisify(require('read-package-json'));
 const debug = require('debug');
 
-const { execSync } = require('child_process');
+const exec = util.promisify(require('child_process').exec);
+const readJson = util.promisify(require('read-package-json'));
+
 const { pick, sortBy, uniqWith, compact } = require('lodash');
 const { isEmpty, isEqual } = require('lodash');
 
@@ -37,7 +39,7 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
 
   // faz o clone do projeto
   log(`Clonig ${repository} into ${repositoryPath}`);
-  execSync(cloneCommand, { stdio: 'ignore' });
+  await exec(cloneCommand, { stdio: 'ignore' });
 
   // busca por arquivos package.json e bower.json
   log('Searching for package.json and bower.json files');
@@ -50,14 +52,14 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
     files,
     async (filesAcc, file) => {
       // volta para o HEAD
-      execSync('git checkout origin/HEAD', {
+      await exec('git checkout origin/HEAD', {
         cwd: repositoryPath,
         stdio: 'ignore'
       });
       // busca todos os commits que alteraram tais arquivos
       log(`Getting change history of ${file}`);
       const command = `git log --pretty=format:%H,%an,%ae,%at -- ${file}`;
-      const stdout = execSync(command, {
+      const { stdout } = await exec(command, {
         cwd: repositoryPath,
         encoding: 'utf8',
         maxBuffer: Infinity
@@ -73,7 +75,7 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
       return Promise.mapSeries(commits, async (commit) => {
         // faz o checkout de cada commit e analisa as dependencias
         log(`Checking out commit ${commit.sha}`);
-        execSync(`git checkout ${commit.sha}`, {
+        await exec(`git checkout ${commit.sha}`, {
           cwd: repositoryPath,
           stdio: 'ignore'
         });
@@ -100,5 +102,5 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
         isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
       );
     })
-    .finally(() => execSync(`rm -rf ${repositoryPath}`));
+    .finally(() => exec(`rm -rf ${repositoryPath}`, { stdio: 'ignore' }));
 };
