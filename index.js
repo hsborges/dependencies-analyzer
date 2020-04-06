@@ -4,6 +4,7 @@
 const Promise = require('bluebird');
 const path = require('path');
 const glob = require('glob');
+const crypto = require('crypto');
 const readJson = Promise.promisify(require('read-package-json'));
 const debug = require('debug');
 
@@ -31,7 +32,8 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
     );
   }
 
-  const repositoryPath = path.join(tmpDir, repository);
+  const hash = crypto.createHash('md5').update(repository).digest('hex');
+  const repositoryPath = path.join(tmpDir, `repo_${hash}`);
   const cloneCommand = `git clone https://github.com/${repository} ${repositoryPath}`;
 
   // faz o clone do projeto
