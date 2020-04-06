@@ -8,8 +8,8 @@ const readJson = Promise.promisify(require('read-package-json'));
 const debug = require('debug');
 
 const { execSync } = require('child_process');
-const { pick, sortBy } = require('lodash');
-const { uniqWith, isEqual } = require('lodash');
+const { pick, sortBy, uniqWith, compact } = require('lodash');
+const { isEmpty, isEqual } = require('lodash');
 
 const log = debug('analyzer:log');
 const error = debug('analyzer:error');
@@ -37,13 +37,6 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
   // faz o clone do projeto
   log(`Clonig ${repository} into ${repositoryPath}`);
   execSync(cloneCommand, { stdio: 'ignore' });
-
-  // deleta arquivos se ctrl+c for pressionado
-  log('Register handling to delete files before exit');
-  process.on('SIGINT', (signal) => {
-    execSync(`rm -rf ${repositoryPath}`, { stdio: 'ignore' });
-    process.exit(signal);
-  });
 
   // busca por arquivos package.json e bower.json
   log('Searching for package.json and bower.json files');
@@ -86,11 +79,9 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
         log(`Parsing ${file} on ${commit.sha}`);
         const fileP = path.join(repositoryPath, file);
         return readJson(fileP)
-          .then((json) =>
-            FIELDS.reduce(
-              (_, type) => (json[type] ? { ..._, [type]: json[type] } : _),
-              commit
-            )
+          .then((json) => pick(json, FIELDS))
+          .then((dependencies) =>
+            isEmpty(dependencies) ? null : { ...commit, ...dependencies }
           )
           .catch((err) => {
             error(`Parsing failed for ${file} on commit ${commit.sha}`);
@@ -102,9 +93,9 @@ module.exports = (repository, { tmpDir, ignoreParsingErrors }) => {
     []
   )
     .then((result) => {
-      // remove commits que não modificaram as dependencias
+      // remove commits que não modificaram ou não possuem dependencias
       log(`Removing commits that did not modify dependencies`);
-      return uniqWith(sortBy(result, 'date'), (a, b) =>
+      return uniqWith(sortBy(compact(result), 'date'), (a, b) =>
         isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
       );
     })
