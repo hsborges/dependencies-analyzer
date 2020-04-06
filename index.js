@@ -7,6 +7,7 @@ const glob = require('glob');
 const util = require('util');
 const crypto = require('crypto');
 const debug = require('debug');
+const os = require('os');
 
 const exec = util.promisify(require('child_process').exec);
 const readJson = util.promisify(require('read-package-json'));
@@ -25,7 +26,14 @@ const FIELDS = [
   'bundledDependencies'
 ];
 
-module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
+module.exports = async (
+  repository,
+  {
+    tmpDir = os.tmpdir(),
+    ignoreParsingErrors = true,
+    ignoreModuleDirectories = true
+  } = {}
+) => {
   const [owner, name] = repository.split('/');
 
   if (!(owner && name))
@@ -43,7 +51,12 @@ module.exports = async (repository, { tmpDir, ignoreParsingErrors }) => {
 
   // busca por arquivos package.json e bower.json
   log('Searching for package.json and bower.json files');
-  const files = glob.sync('**/@(package|bower).json', { cwd: repositoryPath });
+  const files = glob.sync('**/@(package|bower).json', {
+    cwd: repositoryPath,
+    ignore: ignoreModuleDirectories
+      ? '**/+(node_modules|bower_modules)/**'
+      : null
+  });
 
   if (!files || !files.length)
     throw new Error('No [package|bower].json files found!');
