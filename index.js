@@ -88,7 +88,7 @@ module.exports = async (
       return Promise.mapSeries(commits, async (commit) => {
         // faz o checkout de cada commit e analisa as dependencias
         log(`Checking out commit ${commit.sha}`);
-        await exec(`git checkout ${commit.sha}`, {
+        await exec(`git checkout -f ${commit.sha}`, {
           cwd: repositoryPath,
           stdio: 'ignore'
         });
