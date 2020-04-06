@@ -1,6 +1,6 @@
 {
   "name": "@hsborges/dependencies-analyzer",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "author": "Hudson Silva Borges <hudsonsilbor@gmail.com>",
   "description": "Dependencies analyzer is a tool for extracting the history evolution of the dependencies described in the package.json and bower.json.",
   "homepage": "https://github.com/hsborges/dependencies-analyzer#readme",
