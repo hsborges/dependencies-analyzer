@@ -59,7 +59,7 @@ program
         }
       })
       .catch((err) => {
-        process.stderr.write(err.toString());
+        process.stderr.write(`${err.stack || err.toString()}`);
         process.exit(1);
       });
   });
