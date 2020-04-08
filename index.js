@@ -47,7 +47,7 @@ module.exports = async (
   const cloneCommand = `git clone https://github.com/${repository} ${repositoryPath}`;
 
   // faz o clone do projeto
-  log(`Clonig ${repository} into ${repositoryPath}`);
+      log(`Clonig ${repository} into ${repositoryPath}`);
   return exec(cloneCommand, { stdio: 'ignore' })
     .then(() => {
       // busca por arquivos package.json e bower.json
@@ -66,10 +66,10 @@ module.exports = async (
         files,
         async (filesAcc, file) => {
           // volta para o HEAD
-          await exec('git checkout origin/HEAD', {
-            cwd: repositoryPath,
-            stdio: 'ignore'
-          });
+          const gitOptions = { cwd: repositoryPath, stdio: 'ignore' };
+          await exec('git clean -f -d', gitOptions).then(() =>
+            exec('git checkout -f origin/HEAD', gitOptions)
+          );
           // busca todos os commits que alteraram tais arquivos
           log(`Getting change history of ${file}`);
           const command = `git log --pretty=format:%H,%an,%ae,%at -- ${file}`;
@@ -89,10 +89,9 @@ module.exports = async (
           return Promise.mapSeries(commits, async (commit) => {
             // faz o checkout de cada commit e analisa as dependencias
             log(`Checking out commit ${commit.sha}`);
-            await exec(`git checkout -f ${commit.sha}`, {
-              cwd: repositoryPath,
-              stdio: 'ignore'
-            });
+            await exec('git clean -f -d', gitOptions).then(() =>
+              exec(`git checkout -f ${commit.sha}`, gitOptions)
+            );
             log(`Parsing ${file} on ${commit.sha}`);
             const fileP = path.join(repositoryPath, file);
             return readJson(fileP)
