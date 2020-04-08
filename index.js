@@ -46,10 +46,14 @@ module.exports = async (
   const repositoryPath = path.join(tmpDir, `repo_${hash}`);
   const cloneCommand = `git clone https://github.com/${repository} ${repositoryPath}`;
 
+  // remove arquivos temporarios antigos
+  log(`Removing old files in ${repositoryPath}`);
+  await rimraf(repositoryPath, { glob: false });
+
   // faz o clone do projeto
-      log(`Clonig ${repository} into ${repositoryPath}`);
+  log(`Clonig ${repository} into ${repositoryPath}`);
   return exec(cloneCommand, { stdio: 'ignore' })
-    .then(() => {
+    .then(async () => {
       // busca por arquivos package.json e bower.json
       log('Searching for package.json and bower.json files');
       const files = glob.sync('**/@(package|bower).json', {
