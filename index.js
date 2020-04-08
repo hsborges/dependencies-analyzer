@@ -66,7 +66,7 @@ module.exports = async (
       if (!files || !files.length)
         throw new Error('No [package|bower].json files found!');
 
-      return Promise.reduce(
+      const history = await Promise.reduce(
         files,
         async (filesAcc, file) => {
           // volta para o HEAD
@@ -76,18 +76,18 @@ module.exports = async (
           );
           // busca todos os commits que alteraram tais arquivos
           log(`Getting change history of ${file}`);
-          const command = `git log --pretty=format:%H,%an,%ae,%at -- ${file}`;
-          const { stdout } = await exec(command, {
-            cwd: repositoryPath,
-            encoding: 'utf8',
-            maxBuffer: Infinity
-          });
-
+          const { stdout } = await exec(
+            `git log --pretty=format:%H,%an,%ae,%at -- ${file}`,
+            {
+              cwd: repositoryPath,
+              encoding: 'utf8',
+              maxBuffer: Infinity
+            }
+          );
           const commits = stdout.split(/[\r\n]/gi).map((row) => {
             const [sha, author, email, date] = row.split(',');
             return { file, sha, author, email, date: new Date(date * 1000) };
           });
-
           // itera sobre os commits
           log(`Iterating over ${commits.length} commits for ${file}`);
           return Promise.mapSeries(commits, async (commit) => {
@@ -111,13 +111,12 @@ module.exports = async (
           }).then((data) => filesAcc.concat(data));
         },
         []
-      ).then((result) => {
-        // remove commits que não modificaram ou não possuem dependencias
-        log(`Removing commits that did not modify dependencies`);
-        return uniqWith(sortBy(compact(result), 'date'), (a, b) =>
-          isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
-        );
-      });
+      );
+      // remove commits que não modificaram ou não possuem dependencias
+      log(`Removing commits that did not modify dependencies`);
+      return uniqWith(sortBy(compact(history), 'date'), (a, b) =>
+        isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
+      );
     })
     .finally(() => rimraf(repositoryPath, { glob: false }));
 };
