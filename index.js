@@ -46,7 +46,9 @@ module.exports = async (
   return tmp.withDir(async ({ path: dir }) => {
     // faz o clone do projeto
     log(`Clonig ${repository} into ${dir}`);
-    await simpleGit().silent().clone(`https://github.com/${repository}`, dir);
+    await simpleGit()
+      .silent()
+      .clone(`https://anonymous:anonymous@github.com/${repository}`, dir);
 
     // busca por arquivos package.json e bower.json
     log('Searching for package.json and bower.json files');
