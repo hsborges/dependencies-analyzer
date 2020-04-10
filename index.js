@@ -47,7 +47,7 @@ module.exports = async (
     // faz o clone do projeto
     log(`Clonig ${repository} into ${dir}`);
     await simpleGit()
-      .silent()
+      .silent(true)
       .clone(`https://anonymous:anonymous@github.com/${repository}`, dir);
 
     // busca por arquivos package.json e bower.json
