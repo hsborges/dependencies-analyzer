@@ -22,12 +22,10 @@ program
   .arguments('<repository>')
   .option('-f, --format <format>', 'Output format (csv or json)', 'json')
   .option('-o, --output <file_path>', 'Output result to a file')
-  .option('--tmp-dir <dir>', 'Directory to clone the project', '/tmp')
   .option('--ignore-parsing-errors', 'Ignore parsing errors', true)
   .option('--ignore-modules', 'Ignore (node|bower)_modules directories', true)
   .action(async (repository) => {
     return analyzer(repository, {
-      tmpDir: program.tmpDir,
       ignoreParsingErrors: program.ignoreParsingErrors,
       ignoreModuleDirectories: program.ignoreModules
     })
