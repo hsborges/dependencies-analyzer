@@ -40,8 +40,8 @@ module.exports = async (
 
   tmp.setGracefulCleanup();
 
-  const dirOptions = { unsafeCleanup: true };
-  const fileOptions = { postfix: '.json' };
+  const dirOptions = { prefix: 'repo-', unsafeCleanup: true };
+  const fileOptions = { prefix: 'repo-', postfix: '.json' };
 
   return tmp.withDir(async ({ path: dir }) => {
     // faz o clone do projeto
