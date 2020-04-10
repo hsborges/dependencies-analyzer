@@ -63,7 +63,7 @@ module.exports = async (
     const git = simpleGit(dir).silent(true);
 
     // itera sobre os commits e faz o parser
-    const history = await Promise.mapSeries(files, async (file) => {
+    return Promise.mapSeries(files, async (file) => {
       // busca todos os commits que alteraram tais arquivos
       log(`Getting change history of ${file}`);
       const format = { sha: '%H', author: '%an', email: '%ae', date: '%at' };
@@ -105,12 +105,12 @@ module.exports = async (
             renamed = true;
             return Promise.resolve(null);
           });
-      });
-    });
-    // remove commits que não modificaram ou não possuem dependencias
-    log(`Removing commits that did not modify dependencies`);
-    return uniqWith(sortBy(compact(flattenDeep(history)), 'date'), (a, b) =>
-      isEqual(pick(a, [...FIELDS, 'file']), pick(b, [...FIELDS, 'file']))
-    );
+      }).then((fileCommits) =>
+        // remove commits que não modificaram ou não possuem dependencias
+        uniqWith(sortBy(compact(fileCommits), 'date'), (a, b) =>
+          isEqual(pick(a, FIELDS), pick(b, FIELDS))
+        )
+      );
+    }).then((history) => flattenDeep(history));
   }, dirOptions);
 };
